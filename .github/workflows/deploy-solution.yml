@@ -1,4 +1,4 @@
-name: Export Power Platform Solution
+name: Deploy Power Platform Solution
 
 on:
   workflow_dispatch:
@@ -24,12 +24,8 @@ env:
   DIRECTORY_ID: ${{ secrets.DIRECTORY_ID }}
 
 # ⬆️ 환경 변수를 설정합니다.
-permissions:
-  contents: write
-
-# ⬆️ GitHub 액션 권한을 설정합니다.
 jobs:
-  export_solution:
+  deploy_solution:
     runs-on: ubuntu-latest
 
     # ⬆️ 빌드 서버를 설정합니다.
@@ -51,32 +47,22 @@ jobs:
           tenant-id: ${{ env.DIRECTORY_ID }}
 
       # ⬆️ 현재 작업할 파워 플랫폼 환경 체크 액션
-      - name: Export solution
-        uses: microsoft/powerplatform-actions/export-solution@v1
+      - name: Pack solution
+        uses: microsoft/powerplatform-actions/pack-solution@v1
+        with:
+          solution-file: ${{ github.event.inputs.solutionPath }}/${{ github.event.inputs.solutionName }}.zip
+          solution-folder: ${{ github.event.inputs.solutionPath }}/${{ github.event.inputs.solutionName }}
+          solution-type: ${{ github.event.inputs.solutionType }}
+
+      # ⬆️ 플랫폼 솔루션 압축 액션
+      - name: Deploy solution
+        uses: microsoft/powerplatform-actions/import-solution@v1
         with:
           environment-url: ${{ env.ENVIRONMENT_URL }}
           app-id: ${{ env.APPLICATION_ID }}
           client-secret: ${{ env.CLIENT_SECRET }}
           tenant-id: ${{ env.DIRECTORY_ID }}
-          solution-name: ${{ github.event.inputs.solutionName }}
-          solution-output-file: ${{ github.event.inputs.solutionPath}}/${{ github.event.inputs.solutionName }}.zip
-
-      # ⬆️ 파워 플랫폼 솔루션 내보내기 액션
-      - name: Unpack solution
-        uses: microsoft/powerplatform-actions/unpack-solution@v1
-        with:
           solution-file: ${{ github.event.inputs.solutionPath }}/${{ github.event.inputs.solutionName }}.zip
-          solution-folder: ${{ github.event.inputs.solutionPath }}/${{ github.event.inputs.solutionName }}
-          solution-type: ${{ github.event.inputs.solutionType }}
-          overwrite-files: true
+          force-overwrite: true
 
-      # ⬆️ 파워 플랫폼 솔루션 압축 풀기 액션
-      - name: Branch solution
-        uses: microsoft/powerplatform-actions/branch-solution@v1
-        with:
-          solution-folder: ${{ github.event.inputs.solutionPath}}/${{ github.event.inputs.solutionName }}
-          solution-target-folder: ${{ github.event.inputs.solutionPath}}/${{ github.event.inputs.solutionName }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-empty-commit: true
-
-      # ⬆️ 파워 플랫폼 솔루션 새 브랜치 커밋/푸시 액션
+      # ⬆️ 파워 플랫폼 솔루션 배포 액션
